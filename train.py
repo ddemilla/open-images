@@ -11,12 +11,14 @@ import torch.utils.data
 from PIL import Image, ImageFile
 import pandas as pd
 from tqdm import tqdm
+import torch.nn as nn
 
 import collections
 import os
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from torchvision import transforms
+import train_utils
 
 from hparams import create_hparams
 
@@ -35,11 +37,11 @@ else:
     label_encoder = LabelEncoder()
     train_df["LabelEncoded"] = label_encoder.fit_transform(train_df["LabelName"])
     print("Finished encoding labels")
-    torch.save(f"{hparams.checkpoint_path}/label_encoder.bin")
+    torch.save(label_encoder,f"{hparams.checkpoint_path}/label_encoder.bin")
 
-collapsed_train_df = pd.read_csv(f"{csv_dir}/train-annotations-bbox-collapsed.csv", index=False)
+collapsed_train_df = pd.read_csv(f"{hparams.csv_dir}/train-annotations-bbox-collapsed.csv")
 
-train_csv = pd.read_csv(f"{csv_dir}/train-annotations-bbox.csv")
+train_csv = pd.read_csv(f"{hparams.csv_dir}/train-annotations-bbox.csv")
 label_counts = train_csv["LabelName"].value_counts()
 num_classes = len(label_counts)
 
@@ -47,9 +49,9 @@ device = torch.device('cuda:1')
 
 train_images_dir = "data/unzipped/all_train"
 train_csv_file = "data/csvs/train-annotations-bbox-collapsed.csv"
-dataset_train = utils.OpenDataset(train_images_dir, train_csv_file, hparams.image_size, hparams.image_size, img_transforms=None)
+dataset_train = train_utils.OpenDataset(train_images_dir, train_csv_file, hparams.image_size, hparams.image_size, img_transforms=None)
 
-model_ft = utils.get_instance_segmentation_model(num_classes)
+model_ft = train_utils.get_instance_segmentation_model(num_classes)
 if hparams.multi_gpu:
     print("[Using all the available GPUs]")
     model_ft = nn.DataParallel(model_ft, device_ids=[0, 1])

@@ -1,8 +1,5 @@
 # Python lib
-import sys
-sys.path.append('/home/daniel/gitrepos/vision/references/detection')
 import torch
-from engine import train_one_epoch, evaluate
 import utils
 import transforms as T
 import torchvision
