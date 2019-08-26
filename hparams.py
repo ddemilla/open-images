@@ -11,11 +11,12 @@ def create_hparams(hparams_string=None, verbose=False):
         iters_per_checkpoint=5000,
         seed=1234,
         fp16_run=False,
-        multi_gpu=True,
+        multi_gpu=False,
         max_checkpoints_to_keep=5,
         cudnn_enabled=True,
         cudnn_benchmark=False,
-        batch_size=6,
+        batch_size=2,
+        gpu_id=0,
 
         ################################
         # Data Parameters             #
@@ -26,7 +27,11 @@ def create_hparams(hparams_string=None, verbose=False):
         checkpoint_path="checkpoints",
         checkpoint=None,
         csv_dir="/hdd/open-images/csvs",
-
+        train_csv_file="data/csvs/train-annotations-bbox-collapsed.csv",
+        train_images_dir = "data/unzipped/all_train",
+        # dataset_size = None,
+        # dataset_size=2000,
+        dataset_size=50000,
 
         ################################
         # Model Parameters             #

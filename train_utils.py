@@ -15,6 +15,8 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from torchvision import transforms
 
+import tensorflow as tf
+
 class Tensorboard:
     def __init__(self, logdir):
         self.writer = tf.summary.FileWriter(logdir)
@@ -85,15 +87,23 @@ def get_instance_segmentation_model(num_classes):
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
     return model
 
+def prepare_checkpoint(hparams):
+    if not os.path.exists(hparams.checkpoint_path):
+        os.makedirs(hparams.checkpoint_path)
+
+
 class OpenDataset(torch.utils.data.Dataset):
-    def __init__(self, image_dir, df_path, height, width, img_transforms=None):
+    def __init__(self, image_dir, df, height, width,label_encoder, dataset_size=None,img_transforms=None):
         self.transforms = img_transforms
         self.image_dir = image_dir
-        self.df = pd.read_csv(df_path)
-#         self.df = self.df[:1000]
+        # self.df = pd.read_csv(df_path)
+        self.df = df
+        if dataset_size != None:
+            self.df = self.df[:dataset_size]
         self.height = height
         self.width = width
         self.image_info = collections.defaultdict(dict)
+        self.label_encoder = label_encoder
         
         # Filling up image_info is left as an exercise to the reader
         
@@ -109,7 +119,8 @@ class OpenDataset(torch.utils.data.Dataset):
                 self.image_info[counter]["YMin"] = row["YMin"]
                 self.image_info[counter]["XMax"] = row["XMax"]
                 self.image_info[counter]["YMax"] = row["YMax"]
-                self.image_info[counter]["labels"] = row["LabelEncoded"]
+                # self.image_info[counter]["labels"] = row["LabelEncoded"]
+                self.image_info[counter]["labels"] = row["LabelName"]
                 counter += 1
 
     def __getitem__(self, idx):
@@ -138,16 +149,21 @@ class OpenDataset(torch.utils.data.Dataset):
             boxes.append([xmin, ymin, xmax, ymax])
                                                 
         boxes = torch.as_tensor(boxes, dtype=torch.float32)
-        labels = torch.as_tensor([int(x) for x in self.image_info[idx]["labels"].split()])
+        # labels = torch.as_tensor([int(self.label_encoder.transform(x)) for x in self.image_info[idx]["labels"].split()])
+        labels = torch.as_tensor(self.label_encoder.transform(self.image_info[idx]["labels"].split()))
 
         image_id = torch.tensor([idx])
+        # original_image_id = torch.as_tensor([int(self.image_info[idx]["image_id"])])
         area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
-                                                              
+        iscrowd = torch.zeros((num_objs,), dtype=torch.int64)
+
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
         target["image_id"] = image_id
+        # target["original_image_id"] = original_image_id
         target["area"] = area
+        target["iscrowd"] = iscrowd
 
         if self.transforms is not None:
             img, target = self.transforms(img, target)
